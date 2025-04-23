@@ -229,14 +229,7 @@ export const mockJoinRequests: JoinRequest[] = [
   },
 ];
 
-export const mockLeaderRequests: LeaderRequest[] = [
-  {
-    id: '1',
-    userId: '3',
-    status: 'pending',
-    requestedAt: new Date('2023-02-05'),
-  },
-];
+
 
 // Helper function to get user by email (for authentication)
 export const getUserByEmail = (email: string): User | undefined => {

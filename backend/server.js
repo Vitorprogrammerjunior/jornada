@@ -13,6 +13,7 @@ const submissionRoutes = require('./routes/submissions');
 const resultsRoutes = require('./routes/results');
 const settingsRoutes = require('./routes/settings');
 
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -42,6 +43,7 @@ app.use('/api/schedule', scheduleRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/results', resultsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/leader-requests', require('./routes/leaderRequests'));
 
 // Status route
 app.get('/api/status', async (req, res) => {

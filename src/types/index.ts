@@ -60,12 +60,13 @@ export interface JoinRequest {
 }
 
 export interface LeaderRequest {
-  id: string;
-  userId: string;
-  status: 'pending' | 'approved' | 'rejected';
-  requestedAt: Date;
-  reviewedAt?: Date;
-  reviewedBy?: string;
+  id: number;
+  userId: number;
+  name: string;
+  email: string;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  // …outros campos, se precisar
 }
 
 export interface Course {

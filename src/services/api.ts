@@ -111,7 +111,34 @@ export const userService = {
     });
     return handleResponse(response);
   },
+
+ 
 };
+
+// Leader-request services
+export const leaderRequestService = {
+  getAllLeaderRequests: async () => {
+    const response = await fetch(`${API_URL}/leader-requests`, {
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response); // { requests: LeaderRequest[] }
+  },
+  approveLeaderRequest: async (requestId: string) => {
+    const response = await fetch(`${API_URL}/leader-requests/${requestId}/approve`, {
+      method: "PUT",
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  },
+  rejectLeaderRequest: async (requestId: string) => {
+    const response = await fetch(`${API_URL}/leader-requests/${requestId}/reject`, {
+      method: "PUT",
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  },
+};
+
 
 // Group services
 export const groupService = {
@@ -145,18 +172,7 @@ export const groupService = {
     return handleResponse(response);
   },
   
-  updateGroup: async (groupId: string, groupData: any) => {
-    const response = await fetch(`${API_URL}/groups/${groupId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "x-auth-token": localStorage.getItem("token") || "",
-      },
-      body: JSON.stringify(groupData),
-    });
-    return handleResponse(response);
-  },
-  
+  // student solicita entrar
   requestJoinGroup: async (groupId: string) => {
     const response = await fetch(`${API_URL}/groups/${groupId}/join`, {
       method: "POST",
@@ -164,22 +180,39 @@ export const groupService = {
         "x-auth-token": localStorage.getItem("token") || "",
       },
     });
-    return handleResponse(response);
+    return handleResponse(response); // { request: JoinRequest }
   },
-  
-  respondToJoinRequest: async (groupId: string, userId: string, status: 'approved' | 'rejected') => {
-    const response = await fetch(`${API_URL}/groups/${groupId}/members/${userId}`, {
-      method: "PUT",
+
+  // líder pega solicitações pendentes
+  getJoinRequests: async (groupId: string) => {
+    const response = await fetch(`${API_URL}/groups/${groupId}/join-requests`, {
       headers: {
-        "Content-Type": "application/json",
         "x-auth-token": localStorage.getItem("token") || "",
       },
-      body: JSON.stringify({ status }),
     });
+    return handleResponse(response); // { requests: JoinRequest[] }
+  },
+
+  // líder aprova ou rejeita
+  respondToJoinRequest: async (
+    groupId: string,
+    requestId: number,
+    status: 'approved' | 'rejected'
+  ) => {
+    const response = await fetch(
+      `${API_URL}/groups/${groupId}/join-requests/${requestId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": localStorage.getItem("token") || "",
+        },
+        body: JSON.stringify({ status }),
+      }
+    );
     return handleResponse(response);
   },
 };
-
 // Schedule services
 export const scheduleService = {
   getSchedule: async () => {

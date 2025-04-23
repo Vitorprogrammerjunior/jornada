@@ -16,6 +16,7 @@ import {
   XCircle,
   FileUp
 } from "lucide-react";
+import { toast, Toaster } from 'sonner';
 import { 
   mockUsers, 
   mockGroups, 
@@ -25,35 +26,52 @@ import {
   getCurrentPhase,
   getUserById
 } from "@/data/mockData";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { useAuth } from "@/contexts/AuthContext";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label"
 import { JoinRequest, Submission } from "@/types";
+
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { groupService } from "@/services/api";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+
+const coursesMap: Record<string,string> = {
+  "ENG": "Engenharia",
+  "ADM": "Administração",
+  "DIR": "Direito",
+  "MED": "Medicina",
+  "PSI": "Psicologia"
+};
 
 const LeaderDashboard = () => {
   const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const [userGroup, setUserGroup] = useState<any>(
+    () => user && mockGroups.find(g => g.leaderId === user.id)
+  );
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [courseId, setCourseId] = useState("");
+  const [periodSemester, setPeriodSemester] = useState<number>(1);
+  const [isCreating, setIsCreating] = useState(false);
   
-  // Get user's group
-  const userGroup = user ? mockGroups.find(group => group.leaderId === user.id) : null;
   
-  // Get group members
-  const groupMembers = userGroup ? userGroup.members : [];
-  
-  // Get pending join requests for the group
-  const pendingRequests = userGroup 
-    ? mockJoinRequests.filter(req => req.groupId === userGroup.id && req.status === "pending") 
-    : [];
-  
-  // Get current phase
   const currentPhase = getCurrentPhase();
-  
+  // Depois de obter userGroup...
+  const groupMembers = userGroup?.members ?? [];
+  const pendingRequests = userGroup
+  ? mockJoinRequests.filter(req => req.groupId === userGroup.id && req.status === "pending")
+  : [];
+
+
   // Get group submissions
   const groupSubmissions = userGroup 
     ? mockSubmissions.filter(sub => sub.groupId === userGroup.id) 
@@ -70,15 +88,10 @@ const LeaderDashboard = () => {
   };
   
   // Handle submission
-  const handleSubmission = (event: React.FormEvent) => {
-    event.preventDefault();
-    setIsSubmitting(true);
-    
-    setTimeout(() => {
-      setIsSubmitting(false);
-      alert('Arquivo enviado com sucesso!');
-    }, 1500);
+  const handleSubmission = (submission: Submission) => {
+    alert("Envio de trabalho realizado com sucesso!");
   };
+ 
   
   // Calculate phase progress
   const calculatePhaseProgress = (phase: { startDate: Date, endDate: Date }) => {
@@ -105,6 +118,25 @@ const LeaderDashboard = () => {
     return groupSubmissions.find(sub => sub.phaseId === phaseId);
   };
 
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    try {
+      const { group } = await groupService.createGroup({
+        name,
+        description,
+        courseId,
+        periodSemester,
+      });
+      setUserGroup(group);
+      toast.success("Grupo criado com sucesso!");
+    } catch {
+      // handleResponse já dispara toast de erro
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   if (!userGroup) {
     return (
       <div className="p-6">
@@ -117,18 +149,59 @@ const LeaderDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4">
+              <form className="space-y-4" onSubmit={handleCreateGroup}>
                 <div className="space-y-2">
-                  <Label htmlFor="group-name">Nome do Grupo</Label>
-                  <Input id="group-name" placeholder="Digite o nome do grupo" />
+                  <label className="block text-sm font-medium">Nome do Grupo</label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Digite o nome do grupo"
+                    required
+                  />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="group-description">Descrição</Label>
-                  <Textarea id="group-description" placeholder="Descreva o foco do seu grupo" />
+                  <label className="block text-sm font-medium">Descrição</label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Descreva o foco do seu grupo"
+                    required
+                  />
                 </div>
-                
-                <Button className="w-full">Criar Grupo</Button>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Curso</label>
+                  <Select
+                    value={courseId}
+                    onValueChange={(v) => setCourseId(v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(coursesMap).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Período</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={periodSemester}
+                    onChange={(e) => setPeriodSemester(+e.target.value)}
+                    placeholder="Ex: 5"
+                    required
+                  />
+                </div>
+
+                <Button type="submit" disabled={isCreating} className="w-full">
+                  {isCreating ? "Criando..." : "Criar Grupo"}
+                </Button>
               </form>
             </CardContent>
           </Card>
@@ -227,7 +300,7 @@ const LeaderDashboard = () => {
                         </DialogDescription>
                       </DialogHeader>
                       
-                      <form onSubmit={handleSubmission}>
+                      <form onSubmit={hasSubmission}>
                         <div className="space-y-4 py-4">
                           <div className="space-y-2">
                             <Label htmlFor="file">Arquivo</Label>
