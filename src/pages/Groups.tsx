@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/MainLayout";
@@ -22,16 +21,6 @@ import {
   Filter,
   Loader2,
 } from "lucide-react";
-=======
-
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/MainLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
->>>>>>> f306cf60baf1dddd5e9d29b8d5f7de7a0a963508
 import {
   Select,
   SelectContent,
@@ -39,14 +28,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Plus, Users } from "lucide-react";
+import { motion } from "framer-motion";
 import GroupDetail from "@/components/groups/GroupDetail";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
+import { groupService } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
-<<<<<<< HEAD
 const coursesMap: Record<string, string> = {
   ENG: "Engenharia",
   ADM: "Administração",
@@ -102,91 +88,10 @@ const GroupsPage = () => {
   );
 
   const handleOpenDetail = (group: any) => {
-=======
-const Groups = () => {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("all");
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [programFilter, setProgramFilter] = useState("all");
-
-  // Fetch groups data
-  const { data: groups = [], isLoading } = useQuery({
-    queryKey: ["groups"],
-    queryFn: async () => {
-      // Here you would fetch groups from your API
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve([
-            {
-              id: "1",
-              name: "Inovadores Digitais",
-              program: "Programa de Inovação",
-              members: [
-                { id: "1", name: "Ana Silva", role: "leader" },
-                { id: "2", name: "Carlos Mendes", role: "student" },
-                { id: "3", name: "Bruno Gomes", role: "student" },
-              ],
-              progress: 75,
-              nextDelivery: "2023-06-15",
-            },
-            {
-              id: "2",
-              name: "Tech Transformers",
-              program: "Programa de Tecnologia",
-              members: [
-                { id: "4", name: "Juliana Alves", role: "leader" },
-                { id: "5", name: "Rafael Costa", role: "student" },
-                { id: "6", name: "Mariana Souza", role: "student" },
-              ],
-              progress: 60,
-              nextDelivery: "2023-06-20",
-            },
-            {
-              id: "3",
-              name: "Designers do Futuro",
-              program: "Programa de Design",
-              members: [
-                { id: "7", name: "Fernando Lima", role: "leader" },
-                { id: "8", name: "Patrícia Rocha", role: "student" },
-                { id: "9", name: "Roberto Dias", role: "student" },
-              ],
-              progress: 40,
-              nextDelivery: "2023-06-25",
-            },
-          ]);
-        }, 1000);
-      });
-    },
-    meta: {
-      onSuccess: (data: any) => {
-        console.log("Groups loaded:", data);
-      },
-      onError: (error: any) => {
-        toast.error("Erro ao carregar grupos");
-        console.error("Error loading groups:", error);
-      }
-    }
-  });
-
-  // Filter groups based on search query, program filter, and active tab
-  const filteredGroups = groups.filter((group: any) => {
-    const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesProgram = programFilter === "all" || group.program === programFilter;
-    const matchesTab = activeTab === "all" || 
-                       (activeTab === "my" && group.members.some((m: any) => m.id === user?.id));
-    return matchesSearch && matchesProgram && matchesTab;
-  });
-
-  const programs = [...new Set(groups.map((group: any) => group.program))];
-
-  const handleGroupClick = (group: any) => {
->>>>>>> f306cf60baf1dddd5e9d29b8d5f7de7a0a963508
     setSelectedGroup(group);
+    setIsDetailOpen(true);
   };
 
-<<<<<<< HEAD
   const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
@@ -245,24 +150,9 @@ const Groups = () => {
                 ))}
               </SelectContent>
             </Select>
-=======
-  const handleCreateGroup = (formData: any) => {
-    console.log("Creating group:", formData);
-    toast.success("Grupo criado com sucesso!");
-    setIsDialogOpen(false);
-  };
-
-  return (
-    <MainLayout requiredRoles={["coordinator", "leader", "student"]}>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <Users className="h-6 w-6 mr-2 text-green-600" />
-            <h1 className="text-2xl font-bold text-slate-800">Grupos</h1>
->>>>>>> f306cf60baf1dddd5e9d29b8d5f7de7a0a963508
           </div>
+        </motion.div>
 
-<<<<<<< HEAD
         {filteredGroups.length === 0 ? (
           <div className="bg-slate-50 border-slate-200 rounded-lg p-8 text-center">
             <Users className="mx-auto h-12 w-12 text-slate-400 mb-4" />
@@ -303,49 +193,13 @@ const Groups = () => {
                       </motion.div>
                     ))}
                   </motion.div>
-=======
-          {user?.role === "coordinator" && (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" /> Criar Grupo
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Criar Novo Grupo</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome do Grupo</Label>
-                    <Input id="name" placeholder="Digite o nome do grupo" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="program">Programa</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um programa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {programs.map((program) => (
-                          <SelectItem key={program} value={program}>
-                            {program}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={() => handleCreateGroup({ name: "Novo Grupo", program: "Programa de Inovação" })}>
-                    Criar Grupo
-                  </Button>
->>>>>>> f306cf60baf1dddd5e9d29b8d5f7de7a0a963508
                 </div>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
+              ))
+            )}
+          </motion.div>
+        )}
+      </div>
 
-<<<<<<< HEAD
       {selectedGroup && (
         <GroupDetail
           group={selectedGroup}
@@ -355,98 +209,10 @@ const Groups = () => {
           onClose={() => setIsDetailOpen(false)}
         />
       )}
-=======
-        <div className="flex flex-col md:flex-row gap-6">
-          <Card className="md:w-1/3">
-            <CardContent className="p-4">
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Input
-                    placeholder="Buscar grupos..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Select 
-                    value={programFilter}
-                    onValueChange={(value) => setProgramFilter(value)}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Programa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os Programas</SelectItem>
-                      {programs.map((program) => (
-                        <SelectItem key={program} value={program}>
-                          {program}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="w-full">
-                    <TabsTrigger value="all" className="flex-1">
-                      Todos
-                    </TabsTrigger>
-                    <TabsTrigger value="my" className="flex-1">
-                      Meus Grupos
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-
-                {isLoading ? (
-                  <div className="flex justify-center p-4">
-                    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-green-600"></div>
-                  </div>
-                ) : filteredGroups.length > 0 ? (
-                  <div className="space-y-2 mt-2">
-                    {filteredGroups.map((group: any) => (
-                      <div
-                        key={group.id}
-                        className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 ${
-                          selectedGroup?.id === group.id ? "border-green-500 bg-green-50" : ""
-                        }`}
-                        onClick={() => handleGroupClick(group)}
-                      >
-                        <h3 className="font-medium">{group.name}</h3>
-                        <p className="text-sm text-slate-500">{group.program}</p>
-                        <div className="text-xs text-slate-400 mt-1">
-                          {group.members.length} membros
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    Nenhum grupo encontrado
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="md:w-2/3">
-            {selectedGroup ? (
-              <GroupDetail group={selectedGroup} />
-            ) : (
-              <Card className="h-full flex items-center justify-center">
-                <CardContent className="p-8 text-center text-slate-500">
-                  <Users className="h-16 w-16 mx-auto mb-4 text-slate-300" />
-                  <p>Selecione um grupo para visualizar os detalhes</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      </div>
->>>>>>> f306cf60baf1dddd5e9d29b8d5f7de7a0a963508
     </MainLayout>
   );
 };
 
-<<<<<<< HEAD
 const GroupCard = ({ group, onOpenDetail, coursesMap }: any) => {
   const leader = group.members.find((m: any) => m.id === group.leaderId);
 
@@ -508,6 +274,3 @@ const GroupCard = ({ group, onOpenDetail, coursesMap }: any) => {
 };
 
 export default GroupsPage;
-=======
-export default Groups;
->>>>>>> f306cf60baf1dddd5e9d29b8d5f7de7a0a963508

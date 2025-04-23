@@ -1,168 +1,171 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Calendar, 
+  CheckCircle2, 
+  Clock, 
+  FileText, 
+  Flag, 
+  Award,
+  Loader2
+} from "lucide-react";
 import { motion } from "framer-motion";
-import { Calendar as CalendarIcon, Plus, Clock } from "lucide-react";
-import { toast } from "sonner";
+import TimelineItem from "@/components/timeline/TimelineItem";
+import { Phase } from "@/types";
+import { scheduleService } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
-const Schedule = () => {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-
-  const { data: events = [], isLoading } = useQuery({
-    queryKey: ["events", selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""],
-    queryFn: async () => {
-      // Here you would fetch events from your backend API
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve([
-            {
-              id: "1",
-              title: "Reunião de Abertura",
-              date: "2023-06-15",
-              time: "09:00",
-              duration: 60,
-              type: "meeting",
-              description: "Reunião de abertura da jornada digital"
-            },
-            {
-              id: "2",
-              title: "Workshop de Ideação",
-              date: "2023-06-15",
-              time: "14:00",
-              duration: 120,
-              type: "workshop",
-              description: "Workshop para geração de ideias inovadoras"
-            },
-            {
-              id: "3",
-              title: "Entrega do Primeiro Protótipo",
-              date: "2023-06-15",
-              time: "23:59",
-              duration: 0,
-              type: "deadline",
-              description: "Data limite para entrega do primeiro protótipo"
-            },
-            {
-              id: "4",
-              title: "Feedback de Mentores",
-              date: "2023-06-20",
-              time: "10:00",
-              duration: 90,
-              type: "feedback",
-              description: "Sessão de feedback com mentores do programa"
-            }
-          ]);
-        }, 1000);
+const SchedulePage = () => {
+  const [currentDate] = useState(new Date());
+  const { toast } = useToast();
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['schedule'],
+    queryFn: scheduleService.getSchedule,
+    select: (data) => data.phases.sort((a: Phase, b: Phase) => a.order - b.order),
+    onError: (err: Error) => {
+      toast({
+        title: "Erro ao carregar cronograma",
+        description: err.message,
+        variant: "destructive"
       });
-    },
-    meta: {
-      onError: (error: any) => {
-        toast.error("Erro ao carregar eventos");
-        console.error("Error loading events:", error);
-      }
     }
   });
 
-  const filteredEvents = selectedDate
-    ? events.filter((event: any) => event.date === format(selectedDate, "yyyy-MM-dd"))
-    : [];
+  useEffect(() => {
+    document.title = "Cronograma | Jornada Fluxo Digital";
+  }, []);
 
-  const getEventTypeColor = (type: string) => {
-    switch (type) {
-      case "meeting":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case "workshop":
-        return "bg-purple-100 text-purple-700 border-purple-200";
-      case "deadline":
-        return "bg-red-100 text-red-700 border-red-200";
-      case "feedback":
-        return "bg-amber-100 text-amber-700 border-amber-200";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
+  // Get phase status
+  const getPhaseStatus = (phase: Phase) => {
+    const phaseStartDate = new Date(phase.startDate);
+    const phaseEndDate = new Date(phase.endDate);
+    
+    if (currentDate < phaseStartDate) {
+      return { status: "upcoming", label: "Não iniciada", class: "text-slate-600 border-slate-600" };
+    } else if (currentDate > phaseEndDate) {
+      return { status: "completed", label: "Concluída", class: "text-green-600 border-green-600" };
+    } else {
+      return { status: "active", label: "Em andamento", class: "bg-amber-600" };
     }
   };
 
+  // Calculate phase progress
+  const getPhaseProgress = (phase: Phase) => {
+    const phaseStatus = getPhaseStatus(phase).status;
+    const phaseStartDate = new Date(phase.startDate);
+    const phaseEndDate = new Date(phase.endDate);
+    
+    if (phaseStatus === "upcoming") return 0;
+    if (phaseStatus === "completed") return 100;
+    
+    // Phase is active, calculate progress
+    const total = phaseEndDate.getTime() - phaseStartDate.getTime();
+    const current = currentDate.getTime() - phaseStartDate.getTime();
+    return Math.min(Math.round((current / total) * 100), 100);
+  };
+
+  // Format date
+  const formatDate = (date: Date | string) => {
+    return new Intl.DateTimeFormat('pt-BR', { 
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }).format(new Date(date));
+  };
+  
+  // Get phase icon
+  const getPhaseIcon = (order: number) => {
+    switch (order) {
+      case 1: return <Flag className="h-6 w-6 text-green-600" />;
+      case 2: return <FileText className="h-6 w-6 text-blue-600" />;
+      case 3: return <FileText className="h-6 w-6 text-indigo-600" />;
+      case 4: return <FileText className="h-6 w-6 text-purple-600" />;
+      case 5: return <Calendar className="h-6 w-6 text-red-600" />;
+      case 6: return <Award className="h-6 w-6 text-amber-600" />;
+      default: return <Clock className="h-6 w-6 text-slate-600" />;
+    }
+  };
+
+  // Find active phase
+  const activePhase = data?.find(phase => getPhaseStatus(phase).status === "active");
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-full p-6">
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-10 w-10 text-green-600 animate-spin mb-4" />
+            <p className="text-lg text-green-700">Carregando cronograma...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+            <h2 className="text-lg font-medium mb-2">Erro ao carregar o cronograma</h2>
+            <p>Ocorreu um erro ao tentar obter os dados do cronograma. Por favor, tente novamente.</p>
+            <Button 
+              variant="outline" 
+              className="mt-4 border-red-300 text-red-700 hover:bg-red-100"
+              onClick={() => window.location.reload()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <CalendarIcon className="h-6 w-6 mr-2 text-green-600" />
-            <h1 className="text-2xl font-bold text-slate-800">Cronograma</h1>
+      <div className="p-6 space-y-6">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-between items-center"
+        >
+          <h1 className="text-2xl font-bold text-green-800">Cronograma da Jornada</h1>
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
+              <Clock className="h-3 w-3 mr-1" />
+              Fase atual: {activePhase?.name || "Nenhuma"}
+            </Badge>
           </div>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" /> Adicionar Evento
-          </Button>
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Calendário</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                className="rounded-md border"
-                locale={ptBR}
+        <div className="relative py-8">
+          {/* Timeline line */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-green-500 via-blue-500 to-purple-500 rounded-full"></div>
+          
+          <div className="flex flex-col space-y-24">
+            {data?.map((phase, index) => (
+              <TimelineItem 
+                key={phase.id} 
+                phase={phase} 
+                isLeft={index % 2 === 0}
+                getPhaseStatus={getPhaseStatus}
+                getPhaseProgress={getPhaseProgress}
+                formatDate={formatDate}
+                getPhaseIcon={getPhaseIcon}
               />
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">
-                Eventos para {selectedDate && format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center p-8">
-                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-green-600"></div>
-                </div>
-              ) : filteredEvents.length > 0 ? (
-                <div className="space-y-4">
-                  {filteredEvents.map((event: any, index: number) => (
-                    <motion.div
-                      key={event.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className={`p-4 rounded-lg border ${getEventTypeColor(event.type)}`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">{event.title}</h3>
-                          <p className="text-sm mt-1">{event.description}</p>
-                        </div>
-                        <div className="flex items-center text-sm">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {event.time}
-                          {event.duration > 0 && ` (${event.duration} min)`}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-slate-500">
-                  Nenhum evento agendado para esta data
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            ))}
+          </div>
         </div>
       </div>
     </MainLayout>
   );
 };
 
-export default Schedule;
+export default SchedulePage;
