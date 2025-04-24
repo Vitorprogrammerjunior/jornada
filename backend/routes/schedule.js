@@ -1,109 +1,89 @@
-
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const auth = require('../middleware/authMidleware');
+const { pool } = require('../config/database');
 
-// @route   GET api/schedule
-// @desc    Get journey schedule
+// @route   GET /api/schedule
+// @desc    Retorna todas as fases da jornada
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
-    // Here you would fetch the journey phases from the database
-    // For now, we'll use mock data
-    const now = new Date();
-    const oneDay = 24 * 60 * 60 * 1000;
-    
-    const phases = [
-      {
-        id: '1',
-        name: 'Formação das Equipes',
-        description: 'Período para formação e cadastro das equipes participantes',
-        startDate: new Date(now.getTime() - 30 * oneDay), // 30 days ago
-        endDate: new Date(now.getTime() - 15 * oneDay), // 15 days ago
-        isActive: false,
-        order: 1
-      },
-      {
-        id: '2',
-        name: 'Entrega da Proposta Inicial',
-        description: 'Entrega do documento com a proposta inicial do projeto',
-        startDate: new Date(now.getTime() - 15 * oneDay), // 15 days ago
-        endDate: new Date(now.getTime() - 1 * oneDay), // Yesterday
-        isActive: false,
-        order: 2
-      },
-      {
-        id: '3',
-        name: 'Desenvolvimento do Projeto',
-        description: 'Período principal de desenvolvimento do projeto proposto',
-        startDate: new Date(now.getTime()), // Today
-        endDate: new Date(now.getTime() + 30 * oneDay), // 30 days from now
-        isActive: true,
-        order: 3
-      },
-      {
-        id: '4',
-        name: 'Entrega do Relatório Parcial',
-        description: 'Entrega do relatório com o andamento parcial do projeto',
-        startDate: new Date(now.getTime() + 30 * oneDay), // 30 days from now
-        endDate: new Date(now.getTime() + 45 * oneDay), // 45 days from now
-        isActive: false,
-        order: 4
-      },
-      {
-        id: '5',
-        name: 'Finalização e Testes',
-        description: 'Período para finalização e testes do projeto',
-        startDate: new Date(now.getTime() + 45 * oneDay), // 45 days from now
-        endDate: new Date(now.getTime() + 60 * oneDay), // 60 days from now
-        isActive: false,
-        order: 5
-      },
-      {
-        id: '6',
-        name: 'Apresentação Final',
-        description: 'Apresentação final dos projetos desenvolvidos',
-        startDate: new Date(now.getTime() + 60 * oneDay), // 60 days from now
-        endDate: new Date(now.getTime() + 62 * oneDay), // 62 days from now
-        isActive: false,
-        order: 6
-      }
-    ];
+    const [rows] = await pool.query(`
+      SELECT
+        id,
+        name,
+        description,
+        start_date  AS startDate,
+        end_date    AS endDate,
+        is_active   AS isActive,
+        \`order_num\`    AS order_num
+      FROM phases
+      ORDER BY order_num
+    `);
+
+    const phases = rows.map(p => ({
+      id:          p.id,
+      name:        p.name,
+      description: p.description,
+      order:       p.orderNum,
+      isActive:    Boolean(p.isActive),
+      // se o driver retornou Date, converte; se já era string, mantém
+      startDate:   p.startDate instanceof Date ? p.startDate.toISOString() : p.startDate,
+      endDate:     p.endDate   instanceof Date ? p.endDate.toISOString()   : p.endDate,
+    }));
 
     res.json({ success: true, phases });
   } catch (err) {
-    console.error(err.message);
+    console.error('Erro ao buscar fases:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// @route   PUT api/schedule/:phaseId
-// @desc    Update a phase (coordinator only)
+// @route   PUT /api/schedule/:phaseId
+// @desc    Ativa ou desativa uma fase (apenas superadmin)
 // @access  Private
 router.put('/:phaseId', auth, async (req, res) => {
+  const { user } = req;
+  const { phaseId } = req.params;
+  const { isActive, startDate, endDate } = req.body;
+
+  if (!user || user.role !== 'superadmin') {
+    return res.status(403).json({ success: false, message: 'Not authorized' });
+  }
+
   try {
-    if (req.user.role !== 'coordinator') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
+    // Se for ativar, desativa todas
+    if (isActive) {
+      await pool.query('UPDATE phases SET is_Active = false');
     }
 
-    const phaseId = req.params.phaseId;
-    const { name, description, startDate, endDate } = req.body;
-    
-    // Here you would fetch and update the phase in the database
-    // For now, we'll use mock data
-    const updatedPhase = {
-      id: phaseId,
-      name: name || 'Phase Name',
-      description: description || 'Phase Description',
-      startDate: startDate ? new Date(startDate) : new Date(),
-      endDate: endDate ? new Date(endDate) : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-      isActive: true,
-      order: 3
-    };
+    // Agora atualiza esta fase — incluindo datas
+    await pool.query(
+      `UPDATE phases 
+         SET is_Active  = ?,
+             start_Date = ?,
+             end_Date   = ?,
+             updated_At = NOW() 
+       WHERE id = ?`,
+      [
+        isActive  ? 1 : 0,
+        new Date(startDate),   // converte ISO → Date
+        new Date(endDate),
+        phaseId
+      ]
+    );
+
+    // Busca a fase atualizada
+    const [[updatedPhase]] = await pool.query(
+      `SELECT id, name, description, start_Date, end_Date, is_Active, order_num 
+         FROM phases 
+        WHERE id = ?`,
+      [phaseId]
+    );
 
     res.json({ success: true, phase: updatedPhase });
   } catch (err) {
-    console.error(err.message);
+    console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

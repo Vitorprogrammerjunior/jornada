@@ -5,6 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import CoordinatorDashboard from "@/components/dashboard/CoordinatorDashboard";
 import LeaderDashboard from "@/components/dashboard/LeaderDashboard";
 import StudentDashboard from "@/components/dashboard/StudentDashboard";
+import { SuperAdminDashboard } from "@/components/dashboard/SuperAdminDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, Settings } from "lucide-react";
@@ -48,6 +49,8 @@ const Dashboard = () => {
         return <LeaderDashboard />;
       case "student":
         return <StudentDashboard />;
+       case "superadmin":
+        return  <SuperAdminDashboard/>;
       default:
         return (
           <div className="p-6 bg-green-50 border border-green-200 rounded-lg">

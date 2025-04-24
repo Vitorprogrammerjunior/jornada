@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,9 +12,10 @@ type MainLayoutProps = {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ 
   children, 
-  requiredRoles = ["coordinator", "leader", "student"] 
+  requiredRoles = ["superadmin","coordinator", "leader", "student"] 
 }) => {
-  const { user, isLoading } = useAuth();
+   const { user, isLoading } = useAuth();
+   const location = useLocation();
 
   // Show loading state
   if (isLoading) {
@@ -30,7 +31,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
   // Redirect to login if not authenticated
   if (!user) {
+      // se já estivermos em uma rota pública, renderiza o conteúdo (ex.: login, registro, esqueceu senha…)
+    const publicPaths = ["/login", "/register", "/forgot-password"];
+   if (publicPaths.includes(location.pathname)) {
+      return <>{children}</>;
+    }
+
     return <Navigate to="/login" replace />;
+     
   }
 
   // Check if user has required role

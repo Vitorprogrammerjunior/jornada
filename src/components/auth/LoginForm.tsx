@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { z } from "zod";
@@ -42,9 +41,10 @@ const LoginForm = () => {
     setIsSubmitting(true);
     try {
       await login(data.email, data.password);
-      navigate("/dashboard");
-    } catch (error) {
-      // Error is handled by the auth context
+      // Só navegamos uma vez, dentro do handler
+      navigate("/dashboard", { replace: true });
+    } catch {
+      // O erro já é tratado em useAuth()
     } finally {
       setIsSubmitting(false);
     }
@@ -105,11 +105,7 @@ const LoginForm = () => {
             </Link>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Entrando..." : "Entrar"}
           </Button>
 

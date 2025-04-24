@@ -1,20 +1,23 @@
-
 import { useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import LoginForm from "@/components/auth/LoginForm";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
+  // Ajusta o título da página
   useEffect(() => {
     document.title = "Login | Jornada Fluxo Digital";
   }, []);
 
-  // If user is already logged in, redirect to dashboard
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // Redireciona para /dashboard assim que detecta que o usuário está logado
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-green-50 px-4 py-12">

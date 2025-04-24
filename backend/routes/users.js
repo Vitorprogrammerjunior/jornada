@@ -10,7 +10,7 @@ const auth = require('../middleware/authMidleware');
  */
 router.get('/', auth, async (req, res) => {
   try {
-    if (!req.user || req.user.role !== 'coordinator') {
+    if (!req.user || req.user.role !== 'coordinator' && req.user.role !== 'superadmin') {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
     const [rows] = await pool.query(
@@ -87,6 +87,39 @@ router.put('/reject/:userId', auth, async (req, res) => {
     res.json({ success: true, message: 'User rejected successfully' });
   } catch (err) {
     console.error(err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// @desc    Student requests to become a group leader
+// @access  Private (student only)
+router.post('/request-leader', auth, async (req, res) => {
+  // só quem for student pode pedir
+  if (!req.user || req.user.role !== 'student') {
+    return res.status(403).json({ success: false, message: 'Not authorized' });
+  }
+
+  try {
+    // opcional: não permitir duplicatas
+    const [[existing]] = await pool.query(
+      'SELECT id FROM leader_requests WHERE user_id = ? AND status = ?',
+      [req.user.id, 'pending']
+    );
+    if (existing) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Você já tem uma solicitação pendente.' });
+    }
+
+    // insere a nova solicitação
+    await pool.query(
+      'INSERT INTO leader_requests (user_id, status, requested_at) VALUES (?, ?, NOW())',
+      [req.user.id, 'pending']
+    );
+
+    res.json({ success: true, message: 'Solicitação enviada com sucesso!' });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

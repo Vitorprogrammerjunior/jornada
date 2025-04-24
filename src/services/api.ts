@@ -104,7 +104,7 @@ export const userService = {
   
   requestLeader: async () => {
     const response = await fetch(`${API_URL}/users/request-leader`, {
-      method: "PUT",
+      method: "POST",
       headers: {
         "x-auth-token": localStorage.getItem("token") || "",
       },
@@ -348,4 +348,97 @@ export const settingsService = {
     });
     return handleResponse(response);
   },
+
+  
+
+  
 };
+
+// … lá em cima, após Settings services
+
+// Super-Admin services
+export const superAdminService = {
+  // Usuários
+  getAllUsers: async () => {
+    const response = await fetch(`${API_URL}/super-admin/users`, {
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  },
+  getUserById: async (userId: string) => {
+    const response = await fetch(`${API_URL}/super-admin/users/${userId}`, {
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  },
+  updateUser: async (userId: string, data: any) => {
+    const response = await fetch(`${API_URL}/super-admin/users/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-auth-token": localStorage.getItem("token") || ""
+      },
+      body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+  },
+  deleteUser: async (userId: string) => {
+    const response = await fetch(`${API_URL}/super-admin/users/${userId}`, {
+      method: "DELETE",
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  },
+
+  // Fases
+  getAllPhases: async () => {
+    const response = await fetch(`${API_URL}/super-admin/phases`, {
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  },
+  createPhase: async (phaseData: any) => {
+    const response = await fetch(`${API_URL}/super-admin/phases`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-auth-token": localStorage.getItem("token") || ""
+      },
+      body: JSON.stringify(phaseData)
+    });
+    return handleResponse(response);
+  },
+  updatePhase: async (phaseId: string, phaseData: any) => {
+    const response = await fetch(`${API_URL}/super-admin/phases/${phaseId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-auth-token": localStorage.getItem("token") || ""
+      },
+      body: JSON.stringify(phaseData)
+    });
+    return handleResponse(response);
+  },
+  startPhase: async (phaseId: string) => {
+    const response = await fetch(`${API_URL}/super-admin/phases/${phaseId}/start`, {
+      method: "PUT",
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  },
+  finishPhase: async (phaseId: string) => {
+    const response = await fetch(`${API_URL}/super-admin/phases/${phaseId}/finish`, {
+      method: "PUT",
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  },
+  deletePhase: async (phaseId: string) => {
+    const response = await fetch(`${API_URL}/super-admin/phases/${phaseId}`, {
+      method: "DELETE",
+      headers: { "x-auth-token": localStorage.getItem("token") || "" }
+    });
+    return handleResponse(response);
+  }
+};
+

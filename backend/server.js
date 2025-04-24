@@ -12,6 +12,8 @@ const scheduleRoutes = require('./routes/schedule');
 const submissionRoutes = require('./routes/submissions');
 const resultsRoutes = require('./routes/results');
 const settingsRoutes = require('./routes/settings');
+const superAdminRouter = require('./routes/superAdmin');
+
 
 
 const app = express();
@@ -44,6 +46,7 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/results', resultsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/leader-requests', require('./routes/leaderRequests'));
+app.use('/api/super-admin', superAdminRouter);
 
 // Status route
 app.get('/api/status', async (req, res) => {

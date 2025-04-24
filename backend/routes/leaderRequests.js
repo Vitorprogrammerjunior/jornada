@@ -28,6 +28,10 @@ router.get('/', auth, async (req, res) => {
     }
   });
 
+  // @route   POST /api/leader-requests
+
+
+
 // Aprovar uma solicitação
 router.put('/:requestId/approve', auth, async (req, res) => {
   if (!req.user || req.user.role !== 'coordinator') {
