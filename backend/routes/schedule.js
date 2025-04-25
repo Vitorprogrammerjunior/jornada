@@ -57,17 +57,17 @@ router.put('/:phaseId', auth, async (req, res) => {
       await pool.query('UPDATE phases SET is_Active = false');
     }
 
-    // Agora atualiza esta fase — incluindo datas
+    // Atualiza esta fase — incluindo datas
     await pool.query(
       `UPDATE phases 
-         SET is_Active  = ?,
-             start_Date = ?,
-             end_Date   = ?,
+         SET is_Active  = ?, 
+             start_Date = ?, 
+             end_Date   = ?, 
              updated_At = NOW() 
        WHERE id = ?`,
       [
         isActive  ? 1 : 0,
-        new Date(startDate),   // converte ISO → Date
+        new Date(startDate),
         new Date(endDate),
         phaseId
       ]
@@ -75,17 +75,27 @@ router.put('/:phaseId', auth, async (req, res) => {
 
     // Busca a fase atualizada
     const [[updatedPhase]] = await pool.query(
-      `SELECT id, name, description, start_Date, end_Date, is_Active, order_num 
+      `SELECT id, name, description, start_Date AS startDate, end_Date AS endDate, is_Active AS isActive, order_num AS orderNum 
          FROM phases 
         WHERE id = ?`,
       [phaseId]
     );
 
-    res.json({ success: true, phase: updatedPhase });
+    // --- Broadcast via Socket.io ---
+    const io = req.app.get('io');
+    if (io) {
+      // envia para todos os clientes conectados
+      io.emit('phaseUpdated', updatedPhase);
+      // ou, se você usar rooms:
+      // io.to('phases').emit('phaseUpdated', updatedPhase);
+    }
+
+    return res.json({ success: true, phase: updatedPhase });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 module.exports = router;

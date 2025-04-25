@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 require('dotenv').config();
+const http = require('http');
+const { Server } = require('socket.io');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -19,6 +21,15 @@ const superAdminRouter = require('./routes/superAdmin');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*' }
+});
+app.set('io', io);
+
+io.on('connection', socket => {
+  console.log('Cliente conectado:', socket.id);
+});
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
@@ -68,9 +79,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`API available at http://localhost:${PORT}/api`);
+
   testConnection();
 });
 
