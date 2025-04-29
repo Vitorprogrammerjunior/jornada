@@ -22,8 +22,8 @@ export interface Group {
   createdAt: Date;
   approvedAt?: Date;
   approvedBy?: string;
-  courseId?: string;
-  periodSemester?: number;
+  course_id: string;
+  period_semester: number;
 }
 
 export interface Phase {

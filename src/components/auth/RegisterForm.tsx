@@ -26,7 +26,7 @@ const formSchema = z.object({
     errorMap: () => ({ message: "Selecione uma função" }) 
   }),
   courseId: z.string().min(1, "Selecione um curso"),
-  periodSemester: z
+  periodSemester: z.coerce
     .number({ invalid_type_error: "Semestre deve ser um número" })
     .min(1, "Semestre inválido")
 });

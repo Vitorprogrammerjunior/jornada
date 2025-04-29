@@ -1,183 +1,152 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect, FormEvent } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  User,
-  UserPlus,
-  FileText,
-  Users,
-  Clock,
-  Calendar,
-  SearchIcon,
-  CheckCircle2,
-  Clock3
-} from "lucide-react";
-import {
-  mockUsers,
-  mockGroups,
-  mockPhases,
-  getCurrentPhase,
-  mockSubmissions
-} from "@/data/mockData";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { userService } from "@/services/api";
+import { groupService } from "@/services/api";
 
-const StudentDashboard = () => {
+const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [groupCodeInput, setGroupCodeInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isRequestingLeader, setIsRequestingLeader] = useState(false);
+  const [availableGroups, setAvailableGroups] = useState<any[]>([]);
+  const [myGroup, setMyGroup] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
-  // Get user's group
-  const userGroup = user && user.groupId
-    ? mockGroups.find(group => group.id === user.groupId)
-    : null;
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+      try {
+        // 1) pega todos os grupos (já vem com members)
+        const { groups } = await groupService.getAllGroups();
 
-  // Get current phase
-  const currentPhase = getCurrentPhase();
+        // 2) detecta em qual (se houver) estou como membro
+        const joined = groups.find((g: any) =>
+          g.members.some((m: any) => m.id === user.id)
+        );
 
-  // Format date helper
-  const formatDate = (date: Date) =>
-    format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+        if (joined) {
+          setMyGroup(joined);
 
-  // Filter groups for search
-  const filteredGroups = searchQuery
-    ? mockGroups.filter(group =>
-        group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : mockGroups;
+          // exibe modal só uma vez por grupo
+          const key = `joined_${joined.id}`;
+          if (!localStorage.getItem(key)) {
+            setShowModal(true);
+            localStorage.setItem(key, "true");
+          }
+        } else {
+          // 3) senão, filtra por curso e período do aluno
+          const filtered = groups.filter((g: any) =>
+            g.courseId === user.course_id &&
+            g.periodSemester === user.period_semester
+          );
+          setAvailableGroups(filtered);
+        }
+      } catch (err) {
+        console.error(err);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar grupos.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Request to join group (continua mock)
-  const requestToJoinGroup = (groupId: string) => {
-    alert("Solicitação para entrar no grupo enviada com sucesso! Aguarde a aprovação do líder.");
-  };
+    fetch();
+  }, [user.id, user.course_id, user.period_semester]);
 
-  // Join with code (continua mock)
-  const joinWithCode = () => {
-    if (groupCodeInput.length < 5) {
-      alert("Por favor, insira um código válido");
-      return;
-    }
-    alert(`Solicitação com código ${groupCodeInput} enviada com sucesso! Aguarde a aprovação do líder.`);
-    setGroupCodeInput("");
-  };
-
-  // === NOVO: request leader via API ===
-  const requestLeaderRole = async () => {
-    setIsRequestingLeader(true);
+  const joinGroup = async (groupId: string) => {
     try {
-      await userService.requestLeader();
-      toast({
-        title: "Solicitação enviada",
-        description: "O coordenador receberá sua solicitação em breve.",
-        
-      });
+      await groupService.requestJoinGroup(groupId);
+      toast({ title: "Solicitação enviada", description: "Aguarde aprovação do líder." });
     } catch (err: any) {
-      toast({
-        title: "Falha ao solicitar",
-        description: err.message || "Tente novamente mais tarde.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRequestingLeader(false);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
   };
-  // ====================================
 
-  // Calculate phase progress
-  const calculatePhaseProgress = (phase: { startDate: Date, endDate: Date }) => {
-    const now = new Date();
-    const start = new Date(phase.startDate);
-    const end = new Date(phase.endDate);
-    if (now < start) return 0;
-    if (now > end) return 100;
-    return Math.round(((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100);
-  };
+  if (loading) {
+    return <p>Carregando...</p>;
+  }
 
-  // Get group submissions
-  const groupSubmissions = userGroup
-    ? mockSubmissions.filter(sub => sub.groupId === userGroup.id)
-    : [];
-
-  // If user doesn't have a group, show join/create UI
-  if (!userGroup) {
+  // Se já participei de um grupo
+  if (myGroup) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">Encontrar Grupo</h1>
-          <div className="flex items-center">
-            <Button
-              variant="outline"
-              className="mr-2"
-              onClick={requestLeaderRole}
-              disabled={isRequestingLeader}
-            >
-              {isRequestingLeader ? "Enviando..." : "Solicitar Ser Líder"}
-            </Button>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Seu Grupo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-semibold">{myGroup.name}</p>
+            <p className="text-sm text-slate-600">{myGroup.description}</p>
+            <p className="text-xs text-slate-500">
+              Curso: {myGroup.courseId} | Período: {myGroup.periodSemester}º
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* ... restante do JSX de busca de grupos ... */}
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogHeader>
+            <DialogTitle>Parabéns!</DialogTitle>
+          </DialogHeader>
+          <DialogContent>
+            <p>Seja bem-vindo ao grupo “{myGroup.name}” 🎉</p>
+            <DialogFooter>
+              <Button onClick={() => setShowModal(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
 
-  // Get group leader
-  const groupLeader = mockUsers.find(u => u.id === userGroup.leaderId);
-
+  // Senão, mostra grupos disponíveis
   return (
-    <div className="p-6 space-y-6">
-      {/* ... resto do seu dashboard do aluno ... */}
-
-      {/* Tab de solicitar papel de líder */}
-      <TabsContent value="members" className="space-y-4">
-        {/* ... lista de membros ... */}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Solicitar Papel de Líder</CardTitle>
-            <CardDescription>
-              Solicite para se tornar um líder de grupo
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-600 mb-4">
-              Líderes de grupo podem criar novos grupos, gerenciar membros e são
-              responsáveis pelas entregas. Sua solicitação será analisada pelo
-              coordenador.
-            </p>
-            <Button
-              variant="outline"
-              onClick={requestLeaderRole}
-              disabled={isRequestingLeader}
-            >
-              {isRequestingLeader ? "Enviando..." : "Solicitar Papel de Líder"}
-            </Button>
-          </CardContent>
-        </Card>
-      </TabsContent>
-      {/* ... abas fases e entregas ... */}
+    <div className="p-6 space-y-4">
+      {availableGroups.length === 0 ? (
+        <p>Não há grupos disponíveis no seu curso e período.</p>
+      ) : (
+        availableGroups.map((g) => (
+          <Card key={g.id} className="border shadow-sm">
+            <div className="h-1 bg-gradient-to-r from-green-400 to-blue-500 rounded-t" />
+            <CardHeader>
+              <div className="flex justify-between">
+                <div>
+                  <CardTitle className="capitalize">{g.name}</CardTitle>
+                  <CardDescription>{g.description}</CardDescription>
+                </div>
+                <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                  {g.members.length} membro{g.members.length !== 1 ? "s" : ""}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-700">
+              <p>Curso: {g.courseId}</p>
+              <p>Período: {g.periodSemester}º</p>
+              <p>Líder: {g.leaderName}</p>
+              <div className="mt-2 text-right">
+                <Button
+                  size="sm"
+                  className="bg-green-600 text-white"
+                  onClick={() => joinGroup(g.id)}
+                >
+                  Entrar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      )}
     </div>
   );
 };

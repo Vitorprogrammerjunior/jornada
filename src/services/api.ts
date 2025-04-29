@@ -16,6 +16,52 @@ const handleResponse = async (response: Response) => {
   return data;
 };
 
+// Group Request services
+// Group Request services
+// em src/services/api.ts
+
+// Group Request services
+export const groupRequestService = {
+  // Estudante solicita entrada em um grupo
+  requestJoinGroup: async (groupId: string) => {
+    const response = await fetch(`${API_URL}/groups/${groupId}/join`, {
+      method: "POST",
+      headers: { "x-auth-token": localStorage.getItem("token") || "" },
+    });
+    return handleResponse(response);
+  },
+
+  // Líder lista solicitações de entrada pendentes
+  getJoinRequestsByGroup: async (groupId: string) => {
+    const response = await fetch(`${API_URL}/groups/${groupId}/join-requests`, {
+      headers: { "x-auth-token": localStorage.getItem("token") || "" },
+    });
+    return handleResponse(response);
+  },
+
+  // Líder aprova ou rejeita solicitação
+  respondJoinRequest: async (
+    groupId: string,
+    requestId: string,
+    status: 'approved' | 'rejected'
+  ) => {
+    const response = await fetch(
+      `${API_URL}/groups/${groupId}/join-requests/${requestId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": localStorage.getItem("token") || "",
+        },
+        body: JSON.stringify({ status }),
+      }
+    );
+    return handleResponse(response);
+  },
+};
+
+
+
 // Auth services
 export const authService = {
   login: async (email: string, password: string) => {
@@ -440,5 +486,9 @@ export const superAdminService = {
     });
     return handleResponse(response);
   }
+
+  
 };
+
+
 

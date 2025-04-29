@@ -8,6 +8,8 @@ type User = {
   id: string;
   name: string;
   email: string;
+  course_id: string;       // ← ADICIONE
+  period_semester: number;  
   role: string;
   groupId?: string; // Added groupId as optional property
   createdAt: Date;
