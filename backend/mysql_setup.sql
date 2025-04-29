@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(100) NOT NULL,
   email VARCHAR(100) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
-  role ENUM('coordinator', 'leader', 'student', 'inactive', 'pending') NOT NULL DEFAULT 'pending',
+  role ENUM('coordinator','leader','student','inactive','pending') NOT NULL DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   approved_by VARCHAR(36) NULL,
   group_id VARCHAR(36) NULL,
@@ -20,9 +20,35 @@ CREATE TABLE IF NOT EXISTS users (
   FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+SELECT * FROM users;
 -- Create initial coordinator account (password will be hashed in application)
 INSERT INTO users (id, name, email, password, role) VALUES 
 ('1', 'Admin Coordinator', 'admin@example.com', 'password', 'coordinator');
+
+INSERT INTO users (
+  id,
+  name,
+  email,
+  password,       -- já em hash
+  role,
+  created_at
+) VALUES (
+  UUID(),
+  'Super Admin',
+  'admin@seu-dominio.com',
+  'password',
+  'superadmin',
+  NOW()
+);
+
+ALTER TABLE phases
+ADD COLUMN updated_At DATETIME NOT NULL
+  DEFAULT CURRENT_TIMESTAMP
+  ON UPDATE CURRENT_TIMESTAMP;
+
+UPDATE users
+SET password = '$2b$10$bvQ2VvZrH3dYlCqRHkdk8eRAX2Th7iZvjgOoAguSH0u1yf.TpwAxC'
+WHERE email = 'admin@seu-dominio.com';
 
 -- Courses table
 CREATE TABLE IF NOT EXISTS courses (
@@ -38,8 +64,10 @@ INSERT INTO courses (id, name) VALUES
 ('MED', 'Medicina'),
 ('PSI', 'Psicologia');
 
+SELECT * from users; 
+
 -- Groups table
-CREATE TABLE IF NOT EXISTS groups (
+CREATE TABLE IF NOT EXISTS grupos (
   id VARCHAR(36) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   description TEXT NOT NULL,
@@ -55,7 +83,7 @@ CREATE TABLE IF NOT EXISTS groups (
 );
 
 -- Add foreign key constraint to users table (for group_id)
-ALTER TABLE users ADD CONSTRAINT fk_user_group FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL;
+ALTER TABLE users ADD CONSTRAINT fk_user_group FOREIGN KEY (group_id) REFERENCES grupos(id) ON DELETE SET NULL;
 
 -- Group join requests table
 CREATE TABLE IF NOT EXISTS join_requests (
@@ -66,7 +94,7 @@ CREATE TABLE IF NOT EXISTS join_requests (
   requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   reviewed_at TIMESTAMP NULL,
   reviewed_by VARCHAR(36) NULL,
-  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES grupos(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -83,6 +111,11 @@ CREATE TABLE IF NOT EXISTS leader_requests (
   FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+SELECT * FROM leader_requests;
+  
+
+
+
 -- Phases table (for journey schedule)
 CREATE TABLE IF NOT EXISTS phases (
   id VARCHAR(36) PRIMARY KEY,
@@ -93,6 +126,10 @@ CREATE TABLE IF NOT EXISTS phases (
   is_active BOOLEAN NOT NULL DEFAULT FALSE,
   order_num INT NOT NULL
 );
+
+ALTER TABLE phases
+MODIFY COLUMN start_date TIMESTAMP NULL;
+
 
 -- Insert default phases
 INSERT INTO phases (id, name, description, start_date, end_date, is_active, order_num) VALUES
@@ -115,7 +152,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   feedback TEXT NULL,
   graded_by VARCHAR(36) NULL,
   graded_at TIMESTAMP NULL,
-  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES grupos(id) ON DELETE CASCADE,
   FOREIGN KEY (phase_id) REFERENCES phases(id) ON DELETE CASCADE,
   FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (graded_by) REFERENCES users(id) ON DELETE SET NULL
@@ -162,5 +199,26 @@ INSERT INTO settings (id, category, name, value) VALUES
 -- Create indexes
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_course ON users(course_id);
-CREATE INDEX idx_groups_course ON groups(course_id);
+CREATE INDEX idx_groups_course ON grupos(course_id);
 CREATE INDEX idx_submissions_phase ON submissions(phase_id);
+
+-- Primeiro, apaga a tabela antiga se ela existir
+DROP TABLE IF EXISTS grupo_requests;
+
+-- Agora cria a tabela corrigida
+CREATE TABLE grupo_requests (
+  id VARCHAR(36) PRIMARY KEY, -- ID da solicitação (UUID)
+  student_id VARCHAR(36) NOT NULL, -- FK para a tabela users (aluno solicitante)
+  grupo_id VARCHAR(36) NOT NULL, -- FK para a tabela groups (grupo solicitado)
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending', -- Estado da solicitação
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- Foreign Keys corretas
+  CONSTRAINT fk_grupo_requests_student FOREIGN KEY (student_id) REFERENCES users(id),
+  CONSTRAINT fk_grupo_requests_group FOREIGN KEY (grupo_id) REFERENCES grupos(id)
+);
+
+SELECT * FROM grupo_requests;
+
+
