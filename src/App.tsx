@@ -18,6 +18,7 @@ import Schedule from '@/pages/Schedule'
 import Results from '@/pages/Results'
 import Settings from '@/pages/Settings'
 import { Intro } from '@/components/Intro'
+import Cronograma from './components/Cronograma'
 
 const queryClient = new QueryClient()
 
@@ -49,6 +50,7 @@ const App = () => {
                   <Route path="/schedule" element={<Schedule />} />
                   <Route path="/results" element={<Results />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/cronograma" element={<Cronograma />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </>
