@@ -326,6 +326,29 @@ router.put(
   }
 );
 
+router.delete('/:id/leave', auth, async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    // Verify user belongs to this group
+    const [[userRow]] = await pool.query(
+      'SELECT group_id FROM users WHERE id = ?',
+      [req.user.id]
+    );
+    if (!userRow || userRow.group_id !== groupId) {
+      return res.status(403).json({ success: false, message: 'Not authorized or not a member' });
+    }
+    // Remove group association
+    await pool.query(
+      'UPDATE users SET group_id = NULL WHERE id = ?',
+      [req.user.id]
+    );
+    res.json({ success: true, message: 'Group left successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 
 
 

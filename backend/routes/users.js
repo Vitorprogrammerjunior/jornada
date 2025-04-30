@@ -14,7 +14,7 @@ router.get('/', auth, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
     const [rows] = await pool.query(
-      'SELECT id, name, email, role, created_at AS createdAt FROM users'
+      'SELECT id, name, email, role, created_at AS createdAt, course_id, period_semester  FROM users'
     );
     res.json({ success: true, users: rows });
   } catch (err) {

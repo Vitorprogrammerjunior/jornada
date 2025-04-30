@@ -205,6 +205,17 @@ export const groupService = {
     });
     return handleResponse(response);
   },
+
+    // student leaves group
+    leaveGroup: async (groupId: string) => {
+      const response = await fetch(`${API_URL}/groups/${groupId}/leave`, {
+        method: "DELETE",
+        headers: {
+          "x-auth-token": localStorage.getItem("token") || "",
+        },
+      });
+      return handleResponse(response); // { message: string }
+    },
   
   createGroup: async (groupData: any) => {
     const response = await fetch(`${API_URL}/groups`, {

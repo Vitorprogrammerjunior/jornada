@@ -1,4 +1,5 @@
-import { useState, useEffect, FormEvent } from "react";
+import React, { useState, useEffect, FormEvent } from "react";
+import { motion } from "framer-motion";
 import {
   Card,
   CardContent,
@@ -20,13 +21,19 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import { Upload, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { groupService, submissionService, groupRequestService } from "@/services/api";
 import { mockPhases, getCurrentPhase } from "@/data/mockData";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+// Animation variants
+const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
 const LeaderDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -41,36 +48,40 @@ const LeaderDashboard: React.FC = () => {
   const [description, setDescription] = useState("");
   const [courseId, setCourseId] = useState("");
   const [periodSemester, setPeriodSemester] = useState<number>(1);
+  const [score, setScore] = useState<number>(0);
 
   const currentPhase = getCurrentPhase();
-  const groupMembers = userGroup?.members ?? [];
-  const groupSubmissions = userGroup?.submissions ?? [];
+  const members = userGroup?.members ?? [];
+  const submissions = userGroup?.submissions ?? [];
 
-  const hasSubmission = (phaseId: string) =>
-    groupSubmissions.some((s: any) => s.phaseId === phaseId);
+  const hasSubmission = (phaseId: string) => submissions.some((s: any) => s.phaseId === phaseId);
+  const formatDate = (date: Date) => format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
-  const formatDate = (date: Date) =>
-    format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+  // Use phases as tasks
+  const tasks = phases.map(phase => ({
+    id: phase.id,
+    title: `${phase.order}. ${phase.name}`,
+    description: `${formatDate(new Date(phase.startDate))} — ${formatDate(new Date(phase.endDate))}`,
+    done: hasSubmission(phase.id),
+    isCurrent: phase.id === currentPhase.id,
+    action: () => console.log(`open-phase-${phase.id}`)
+  }));
 
   useEffect(() => {
+    setScore(Math.floor(Math.random() * 1000));
     const fetchData = async () => {
       try {
         const { groups } = await groupService.getAllGroups();
-        console.log("🔄 All groups:", groups);
         const myGroup = groups.find((g: any) => g.leaderId === user.id);
-        console.log("👑 My group:", myGroup);
         if (myGroup) {
           setUserGroup(myGroup);
-          const { requests } = await groupRequestService.getJoinRequestsByGroup(
-            myGroup.id
-          );
-          console.log("📝 Pending requests:", requests);
+          const { requests } = await groupRequestService.getJoinRequestsByGroup(myGroup.id);
           setPendingRequests(requests);
         }
         setPhases(mockPhases);
       } catch (err) {
         console.error(err);
-        toast({ title: "Erro", description: "Não foi possível carregar dados.", variant: "destructive" });
+        toast({ title: 'Erro', description: 'Não foi possível carregar dados.', variant: 'destructive' });
       } finally {
         setIsLoading(false);
       }
@@ -84,9 +95,9 @@ const LeaderDashboard: React.FC = () => {
     try {
       const { group } = await groupService.createGroup({ name, description, courseId, periodSemester });
       setUserGroup(group);
-      toast({ title: "Sucesso", description: "Grupo criado!" });
+      toast({ title: 'Sucesso', description: 'Grupo criado!' });
     } catch {
-      toast({ title: "Erro", description: "Falha ao criar grupo.", variant: "destructive" });
+      toast({ title: 'Erro', description: 'Falha ao criar grupo.', variant: 'destructive' });
     } finally {
       setIsCreating(false);
     }
@@ -95,154 +106,161 @@ const LeaderDashboard: React.FC = () => {
   const handleFileSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const fileInput = form.elements.namedItem("file") as HTMLInputElement;
-    const commentInput = form.elements.namedItem("comment") as HTMLTextAreaElement;
+    const fileInput = form.elements.namedItem('file') as HTMLInputElement;
+    const commentInput = form.elements.namedItem('comment') as HTMLTextAreaElement;
     const file = fileInput.files?.[0];
-    if (!file) return toast({ title: "Erro", description: "Selecione um PDF.", variant: "destructive" });
+    if (!file) return toast({ title: 'Erro', description: 'Selecione um PDF.', variant: 'destructive' });
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("phaseId", currentPhase.id);
-    formData.append("groupId", userGroup.id);
-    formData.append("comment", commentInput.value);
+    formData.append('file', file);
+    formData.append('phaseId', currentPhase.id);
+    formData.append('groupId', userGroup.id);
+    formData.append('comment', commentInput.value);
     try {
       await submissionService.submitFile(formData);
-      toast({ title: "Sucesso", description: "Entrega enviada!" });
+      toast({ title: 'Sucesso', description: 'Entrega enviada!' });
     } catch {
-      toast({ title: "Erro", description: "Falha ao enviar entrega.", variant: "destructive" });
+      toast({ title: 'Erro', description: 'Falha ao enviar entrega.', variant: 'destructive' });
     }
   };
 
-  const handleRespondRequest = async (requestId: string, action: "approved" | "rejected") => {
+  const handleRespondRequest = async (requestId: string, action: 'approved' | 'rejected') => {
     try {
       await groupRequestService.respondJoinRequest(userGroup.id, requestId, action);
-      toast({ title: "Sucesso", description: `Solicitação ${action === "approved" ? "aprovada" : "rejeitada"}` });
+      toast({ title: 'Sucesso', description: `Solicitação ${action === 'approved' ? 'aprovada' : 'rejeitada'}` });
       const { requests } = await groupRequestService.getJoinRequestsByGroup(userGroup.id);
-      console.log("📝 Updated requests:", requests);
       setPendingRequests(requests);
     } catch {
-      toast({ title: "Erro", description: "Falha ao responder.", variant: "destructive" });
+      toast({ title: 'Erro', description: 'Falha ao responder.', variant: 'destructive' });
     }
   };
 
   if (isLoading) return <p>Carregando...</p>;
-
-  if (!userGroup) {
-    return (
-      <div className="p-6">
-        <Card className="max-w-xl mx-auto">
-          <CardHeader>
-            <CardTitle>Criar Grupo</CardTitle>
-            <CardDescription>Preencha os dados do seu grupo</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateGroup} className="space-y-4">
-              <Label>Nome</Label>
-              <Input value={name} onChange={e => setName(e.target.value)} required />
-              <Label>Descrição</Label>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} required />
-              <Label>Curso</Label>
-              <Input value={courseId} onChange={e => setCourseId(e.target.value)} required />
-              <Label>Período</Label>
-              <Input
-                type="number"
-                min={1}
-                value={periodSemester}
-                onChange={e => setPeriodSemester(+e.target.value)}
-                required
-              />
-              <Button type="submit" className="w-full" disabled={isCreating}>
-                {isCreating ? "Criando..." : "Criar Grupo"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  if (!userGroup) return (
+    <div className="p-6">
+      <Card className="max-w-xl mx-auto">
+        <CardHeader>
+          <CardTitle>Criar Grupo</CardTitle>
+          <CardDescription>Preencha os dados do seu grupo</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateGroup} className="space-y-4">
+            <Label>Nome</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} required />
+            <Label>Descrição</Label>
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} required />
+            <Label>Curso</Label>
+            <Input value={courseId} onChange={e => setCourseId(e.target.value)} required />
+            <Label>Período</Label>
+            <Input type="number" min={1} value={periodSemester} onChange={e => setPeriodSemester(+e.target.value)} required />
+            <Button type="submit" className="w-full" disabled={isCreating}>{isCreating ? 'Criando...' : 'Criar Grupo'}</Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
-    <div className="p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>{userGroup.name}</CardTitle>
-              <CardDescription>{userGroup.description}</CardDescription>
+    <motion.div className="p-6 space-y-6" variants={container} initial="hidden" animate="show">
+      {/* Header */}
+      <motion.div variants={item}>
+        <Card className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white relative overflow-hidden">
+          <CardHeader>
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Avatar>
+                  <AvatarImage src={user.avatarUrl} alt={user.name} />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <motion.div className="absolute -top-2 -right-2 text-yellow-300" animate={{ rotate: [0, 20, -20, 0] }} transition={{ duration: 2, repeat: Infinity }}>
+                  <Crown size={24} />
+                </motion.div>
+              </div>
+              <div>
+                <CardTitle className="text-xl">Olá, {user.name}!</CardTitle>
+                <p className="opacity-80">Bem-vindo ao seu Dashboard</p>
+                <Badge className="mt-2 bg-yellow-400 text-black">Pontuação: {score}</Badge>
+              </div>
             </div>
-            <Badge className="bg-blue-600">{groupMembers.length} membros</Badge>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
+      </motion.div>
 
+      {/* Members */}
+      <motion.div variants={item}>
+        <Card>
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle>Membros do Grupo <Badge  className="bg-blue-600 text-white px-3 py-0.5 text-xs">{members.length}</Badge></CardTitle>
+            
+          </CardHeader>
+          <CardContent>
+            <motion.div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4" variants={container}>
+              {members.map(m => (
+                <motion.div key={m.id} variants={item} className="hover:shadow-xl transition-shadow rounded-lg">
+                  <CardContent className="flex flex-col items-center text-center p-4">
+                    <Avatar className="mb-2">
+                      <AvatarImage src={m.avatarUrl} alt={m.name} />
+                      <AvatarFallback>{m.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <h3 className="font-medium">{m.name}</h3>
+                    <Badge variant="outline" className="mt-1">{m.role}</Badge>
+                    <Progress value={m.progress} className="w-full mt-3" />
+                    <p className="mt-1 text-sm">{m.progress}% concluído</p>
+                  </CardContent>
+                </motion.div>
+              ))}
+            </motion.div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Pending Requests */}
       {pendingRequests.length > 0 && (
+        <motion.div variants={item}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Solicitações Pendentes</CardTitle>
+              <CardDescription>Gerencie solicitações de entrada</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pendingRequests.map(req => (
+                <div key={req.id} className="flex justify-between items-center border-b pb-2">
+                  <div>
+                    <p className="font-medium">{req.name}</p>
+                    <p className="text-xs text-slate-500">{req.email}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleRespondRequest(req.id, 'approved')}>Aceitar</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleRespondRequest(req.id, 'rejected')}>Rejeitar</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Phases as Tasks */}
+      <motion.div variants={item}>
         <Card>
           <CardHeader>
-            <CardTitle>Solicitações Pendentes</CardTitle>
-            <CardDescription>Gerencie quem quer entrar no grupo</CardDescription>
+            <CardTitle>Fases da Jornada</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {pendingRequests.map(req => (
-              <div key={req.id} className="flex justify-between items-center border-b pb-2">
+            {tasks.map(t => (
+              <motion.div key={t.id} variants={item} className={`flex items-center justify-between p-4 rounded-lg hover:bg-gray-100 ${t.isCurrent ? 'border-2 border-indigo-500 bg-gray-50' : 'bg-white'}`} whileHover={{ scale: 1.02 }}>
                 <div>
-                  <p className="font-medium">{req.name}</p>
-                  <p className="text-xs text-slate-500">{req.email}</p>
+                  <h4 className="font-medium">{t.title}</h4>
+                  <p className="text-sm opacity-80">{t.description}</p>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleRespondRequest(req.id, "approved")}>Aceitar</Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleRespondRequest(req.id, "rejected")}>Rejeitar</Button>
-                </div>
-              </div>
+                <Button size="sm" variant={t.done ? 'secondary' : 'primary'} onClick={t.action}>
+                  {t.done ? 'Concluída' : 'Ir'}
+                </Button>
+              </motion.div>
             ))}
           </CardContent>
         </Card>
-      )}
-
-      <div className="space-y-4">
-        {phases.map(phase => {
-          const isCurrent = phase.id === currentPhase.id;
-          return (
-            <Card key={phase.id}>
-              <CardContent className="flex justify-between items-center">
-                <div>
-                  <div className="font-medium flex items-center gap-2">
-                    <span>{phase.order}. {phase.name}</span>
-                    {isCurrent && <Badge className="bg-amber-600">Atual</Badge>}
-                  </div>
-                  <p className="text-sm text-slate-500">
-                    {formatDate(new Date(phase.startDate))} — {formatDate(new Date(phase.endDate))}
-                  </p>
-                </div>
-                {isCurrent && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <Upload className="w-4 h-4 mr-2" />
-                        {hasSubmission(phase.id) ? "Já enviado" : "Enviar entrega"}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Enviar entrega</DialogTitle>
-                        <DialogDescription>Fase: {phase.name}</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleFileSubmit} className="space-y-4 py-4">
-                        <Label htmlFor="file-upload">Arquivo (PDF)</Label>
-                        <input id="file-upload" name="file" type="file" accept=".pdf" className="block mt-1" required />
-                        <Label htmlFor="comment">Comentário (opcional)</Label>
-                        <Textarea id="comment" name="comment" />
-                        <DialogFooter>
-                          <Button type="submit" disabled={hasSubmission(phase.id)}>Enviar</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

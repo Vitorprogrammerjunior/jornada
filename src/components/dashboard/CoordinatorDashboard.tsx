@@ -69,11 +69,13 @@ useEffect(() => {
   // Todos os usuários
   useEffect(() => {
     userService.getAllUsers()
-      .then(data => setUsuarios(data.users))
+    
+      .then(data => setUsuarios(data.users) )
+      
       .catch(console.error)
       .finally(() => setLoadingUsuarios(false));
   }, []);
-
+  
   // ### Handlers
   const handleUserApproval = async (userId: string, approve: boolean) => {
     try {
@@ -241,9 +243,12 @@ useEffect(() => {
                 <User className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="font-medium">{user.name}</p>
-                <p className="text-sm text-slate-500">{user.email}</p>
-              </div>
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-sm">{user.email}</p>
+                      <p className="text-sm">Curso: {user.course_id}</p>
+                      <p className="text-sm">Período: {user.period_semester}º</p>
+                    </div>
+                    <Badge>{user.role}</Badge>
             </div>
             <div className="flex space-x-2">
               <Button
@@ -345,6 +350,7 @@ useEffect(() => {
                     key={request.id}   /* chave única */
                     className="flex items-center justify-between border-b pb-3"
                   >
+                    
                     <div className="flex items-center space-x-4">
                       <div className="p-2 rounded-full bg-green-50">
                         <User className="h-5 w-5 text-green-600" />
@@ -352,6 +358,8 @@ useEffect(() => {
                       <div>
                         <p className="font-medium">{user.name}</p>
                         <p className="text-sm text-slate-500">{user.email}</p>
+                        <p className="text-sm">Curso: {user.course_id}</p>
+                        <p className="text-sm">Período: {user.period_semester}º</p>
                       </div>
                     </div>
                     <div className="flex space-x-2">
