@@ -16,6 +16,7 @@ const resultsRoutes = require('./routes/results');
 const settingsRoutes = require('./routes/settings');
 const superAdminRouter = require('./routes/superAdmin');
 const groupRequestRoutes = require('./routes/groups');
+const documentsRouter = require('./routes/documents');
 
 
 
@@ -60,6 +61,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/leader-requests', require('./routes/leaderRequests'));
 app.use('/api/super-admin', superAdminRouter);
 app.use('/api', groupRequestRoutes);
+app.use('/api', documentsRouter);
 
 
 // Status route

@@ -221,4 +221,19 @@ CREATE TABLE grupo_requests (
 
 SELECT * FROM grupo_requests;
 
+CREATE TABLE IF NOT EXISTS documents (
+  id VARCHAR(36) PRIMARY KEY,
+  phase_id VARCHAR(36) NOT NULL,
+  leader_id VARCHAR(36) NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_url TEXT NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (phase_id) REFERENCES phases(id),
+  FOREIGN KEY (leader_id) REFERENCES users(id)
+);
+
+ALTER TABLE documents
+  ADD COLUMN group_id VARCHAR(36) NULL,
+  ADD FOREIGN KEY (group_id) REFERENCES grupos(id);
+
 
